@@ -1,0 +1,5 @@
+require 'rubygems'
+require 'require_all'
+require 'watir-webdriver'
+require 'rest_client'
+require 'yaml'

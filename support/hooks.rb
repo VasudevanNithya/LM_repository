@@ -1,5 +1,5 @@
 Before do
-  # ENV['HTTP_PROXY'] = ENV['http_proxy'] = RestClient.proxy = nil
+  ENV['HTTP_PROXY'] = ENV['http_proxy'] #= RestClient.proxy = nil
 end
 
 

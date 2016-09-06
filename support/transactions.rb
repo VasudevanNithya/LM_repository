@@ -1,8 +1,16 @@
-require 'rubygems'
 require 'rest_client'
 require 'date'
 require 'time'
 require 'json'
+require 'optparse'
+
+options = {}
+OptionParser.new do |opts|
+
+  opts.on("--ignoredonuts", "Ignore donuts") do |i|
+    options[:ignoredonuts] = i
+  end
+end.parse!
 
 url = 'https://prod-api.level-labs.com/api/v2/core/get-all-transactions'
 
@@ -17,7 +25,11 @@ begin
                                'accept' => 'application/json',
                                'content-type'=>'application/json')
     transaction_data = JSON.parse(response.body)
+rescue
+  raise 'Error executing POST request'
+end
 
+begin
     reference_date = Time.parse(transaction_data['transactions'][0]['transaction-time']).strftime('%Y-%m')
 
     @aggregate = 0
@@ -65,26 +77,31 @@ begin
               number_of_debits = number_of_debits+1
             end
 
-            if (t['merchant'] == 'Krispy Kreme Donuts') || (t['merchant'] == 'Dunkin #336784')
-              @donut_debit = @donut_debit + transaction_amount.abs
-              number_of_donutdebits = number_of_debits-1
+            if (options[:ignoredonuts] == true)
+              if (t['merchant'] == 'Krispy Kreme Donuts') || (t['merchant'] == 'Dunkin #336784')
+                @donut_debit = @donut_debit + transaction_amount.abs
+                number_of_donutdebits = number_of_debits-1
+              end
             end
 
             if end_of_month == true
               puts "Averages for month #{transaction_time} by number of credits/debits"
               average_credits_bynumber = '%.2f' % ((@credits/number_of_credits).to_i/10000)
               average_debits_bynumber = '%.2f' % ((@debits/number_of_debits).to_f/10000)
-              puts "Income = $#{average_credits_bynumber}"
-              puts "Expenditure = $#{average_debits_bynumber}"," "
+              puts "Income from #{number_of_credits} transactions = $#{average_credits_bynumber} (/credit transaction)"
+              puts "Expenditure from #{number_of_debits} transactions = $#{average_debits_bynumber} (/debit transaction)"," "
 
               puts "Averages for month #{transaction_time} over #{@number_of_days} days"
               average_credits = '%.2f' % ((@credits/@number_of_days).to_i/10000)
               average_debits = '%.2f' % ((@debits/@number_of_days).to_f/10000)
-              puts "Income = $#{average_credits}"
-              puts "Expenditure = $#{average_debits}"," "
+              puts "Income = $#{average_credits} (/day)"
+              puts "Expenditure = $#{average_debits} (/day)"," "
 
+              if options[:ignoredonuts] == true
               donut_debit_amount = '%.2f' % (((@debits-@donut_debit)/@number_of_days).to_f/10000)
-              puts "Average expenditure for #{transaction_time} over #{@number_of_days} days without donut expense = $#{donut_debit_amount}",""
+              puts "Average expenditure for #{transaction_time} over #{@number_of_days} days without donut expense = $#{donut_debit_amount} (/day)",""
+              end
+
               puts "*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*"," "
               end_of_month = false
             end
@@ -108,7 +125,6 @@ begin
 
     count = count+1
     end
-
-rescue RestClient::ExceptionWithResponse => err
-    puts err
+rescue
+  raise 'Error iterating through transaction data'
 end
